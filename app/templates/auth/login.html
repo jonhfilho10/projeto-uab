@@ -4,32 +4,44 @@
 
 {% block content %}
 
-<div class="container min-vh-100 d-flex justify-content-center align-items-center">
+<div class="login-page">
 
-    <div class="card shadow" style="width: 420px;">
-        <div class="card-body p-4">
+    <div class="login-card">
 
-            <h3 class="text-center mb-4">Login</h3>
+        <div class="login-header text-center mb-4">
 
-            <form id="loginForm">
+            <div class="logo-circle mb-3">
+                ⚽
+            </div>
 
-                <div class="mb-3">
-                    <label>E-mail</label>
-                    <input type="email" id="email" class="form-control">
-                </div>
+            <h2 class="fw-bold mb-1">
+                Projeto Social Esportivo
+            </h2>
 
-                <div class="mb-3">
-                    <label>Senha</label>
-                    <input type="password" id="senha" class="form-control">
-                </div>
-
-                <button type="submit" id="btnEntrar" class="btn btn-primary w-100">
-                    Entrar
-                </button>
-
-            </form>
+            <p class="text-muted mb-0">
+                Sistema de Gestão de Participantes
+            </p>
 
         </div>
+
+        <form id="loginForm">
+
+            <div class="mb-3">
+                <label class="form-label">E-mail</label>
+                <input type="email" id="email" class="form-control form-control-lg">
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label">Senha</label>
+                <input type="password" id="senha" class="form-control form-control-lg">
+            </div>
+
+            <button type="submit" id="btnEntrar" class="btn btn-primary btn-lg w-100">
+                Entrar
+            </button>
+
+        </form>
+
     </div>
 
 </div>
@@ -37,32 +49,74 @@
 <div class="modal fade" id="modalErro" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-sm">
         <div class="modal-content border-0 shadow-lg rounded-4">
-
             <div class="modal-body text-center p-4">
 
-                <div class="mb-4">
+                <div class="mb-3">
                     <div class="erro-icone mx-auto">
                         ×
                     </div>
                 </div>
 
-                <h5 class="fw-bold mb-3" id="modalTitulo">Acesso Negado</h5>
+                <h6 class="fw-bold mb-2" id="modalTitulo">
+                    Acesso Negado
+                </h6>
 
-                <p class="text-muted mb-4" id="modalMensagem">
-                    E-mail e senha são obrigatórios.
+                <p class="text-muted mb-3" id="modalMensagem">
+                    E-mail ou senha inválidos.
                 </p>
 
-                <button type="button" class="btn btn-primary px-4" data-bs-dismiss="modal">
+                <button type="button"
+                        class="btn btn-primary btn-sm px-4"
+                        data-bs-dismiss="modal">
                     Tentar novamente
                 </button>
 
             </div>
-
         </div>
     </div>
 </div>
 
 <style>
+.login-page {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0d47a1, #1976d2, #42a5f5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 460px;
+    background: rgba(255, 255, 255, 0.96);
+    border-radius: 22px;
+    box-shadow: 0 15px 45px rgba(0,0,0,0.25);
+    padding: 42px;
+}
+
+.logo-circle {
+    width: 82px;
+    height: 82px;
+    background: #0d47a1;
+    color: #fff;
+    border-radius: 50%;
+    margin: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    box-shadow: 0 8px 25px rgba(13,71,161,0.35);
+}
+
+.form-control {
+    border-radius: 12px;
+}
+
+.btn {
+    border-radius: 12px;
+}
+
 .erro-icone {
     width: 55px;
     height: 55px;
@@ -70,7 +124,7 @@
     border-radius: 50%;
     color: #ff6b6b;
     font-size: 36px;
-    line-height: 48px;
+    line-height: 50px;
     font-weight: 300;
 }
 </style>
@@ -78,6 +132,7 @@
 {% endblock %}
 
 {% block scripts %}
+
 <script>
 document.getElementById("loginForm").addEventListener("submit", function(e) {
     e.preventDefault();
@@ -115,8 +170,11 @@ document.getElementById("loginForm").addEventListener("submit", function(e) {
         window.location.href = data.redirect;
     })
     .catch(error => {
-        document.getElementById("modalTitulo").innerText = error.titulo || "Erro";
-        document.getElementById("modalMensagem").innerText = error.mensagem || "Não foi possível realizar o login.";
+        document.getElementById("modalTitulo").innerText =
+            error.titulo || "Acesso Negado";
+
+        document.getElementById("modalMensagem").innerText =
+            error.mensagem || "Não foi possível realizar o login.";
 
         const modal = new bootstrap.Modal(document.getElementById("modalErro"));
         modal.show();
@@ -126,4 +184,5 @@ document.getElementById("loginForm").addEventListener("submit", function(e) {
     });
 });
 </script>
+
 {% endblock %}
