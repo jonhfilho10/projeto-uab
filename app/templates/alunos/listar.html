@@ -1,0 +1,503 @@
+{% extends "base.html" %}
+
+{% block title %}Participantes{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Participantes</h2>
+
+    <button class="btn btn-primary" onclick="abrirCadastroAluno()">
+        Novo Participante
+    </button>
+</div>
+
+<div id="loader" class="alert alert-info">
+    Carregando participantes...
+</div>
+
+<div id="conteudo" style="display: none;">
+    <div class="card shadow-sm">
+        <div class="card-body">
+
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>CPF</th>
+                        <th>Telefone</th>
+                        <th>Modalidade</th>
+                        <th>Status</th>
+                        <th width="170">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelaAlunos"></tbody>
+            </table>
+
+        </div>
+    </div>
+</div>
+
+<!-- MODAL CADASTRO / EDIÇÃO -->
+<div class="modal fade" id="modalAluno" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+
+            <form id="formAluno">
+
+                <div class="modal-header">
+                    <h5 class="modal-title" id="tituloAluno">Novo Participante</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <input type="hidden" id="aluno_id">
+
+                    <div class="row">
+
+                        <div class="col-md-6 mb-3">
+                            <label>Nome Completo</label>
+                            <input type="text" id="nome" class="form-control">
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label>CPF</label>
+                            <input type="text" id="cpf" class="form-control" maxlength="14">
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label>Telefone</label>
+                            <input type="text" id="telefone" class="form-control" maxlength="15">
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label>Modalidade</label>
+                            <select id="modalidade_id" class="form-control">
+                                <option value="">Selecione...</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-12 mb-3">
+                            <label>Endereço</label>
+                            <input type="text" id="endereco" class="form-control">
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label>Status</label>
+                            <select id="status" class="form-control">
+                                <option value="ativo">Ativo</option>
+                                <option value="inativo">Inativo</option>
+                            </select>
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+
+                    <button type="submit" id="btnSalvarAluno" class="btn btn-primary">
+                        Salvar
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+
+<!-- MODAL ALERTA -->
+<div class="modal fade" id="modalErro" tabindex="-1" style="z-index: 1065;">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-body text-center p-4">
+
+                <div class="mb-3">
+                    <div class="erro-icone warning-icone mx-auto">!</div>
+                </div>
+
+                <h6 class="fw-bold mb-2" id="modalTitulo">Atenção</h6>
+
+                <p class="text-muted mb-3" id="modalMensagem">
+                    Verifique os dados informados.
+                </p>
+
+                <button type="button" class="btn btn-primary btn-sm px-4" data-bs-dismiss="modal">
+                    OK
+                </button>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL CONFIRMAÇÃO EXCLUSÃO -->
+<div class="modal fade" id="modalConfirmarAluno" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-body text-center p-4">
+
+                <div class="mb-3">
+                    <div class="erro-icone warning-icone mx-auto">!</div>
+                </div>
+
+                <h6 class="fw-bold mb-2">Confirmar exclusão</h6>
+
+                <p class="text-muted mb-3">
+                    Deseja realmente excluir este participante?
+                </p>
+
+                <input type="hidden" id="idExcluirAluno">
+
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+
+                <button type="button" class="btn btn-danger btn-sm" onclick="confirmarExclusaoAluno()">
+                    Excluir
+                </button>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+
+<script>
+let alunosCache = [];
+let modalidadesCache = [];
+
+function mostrarMensagem(titulo, mensagem) {
+    document.getElementById("modalTitulo").innerText = titulo;
+    document.getElementById("modalMensagem").innerText = mensagem;
+
+    const modalErro = new bootstrap.Modal(
+        document.getElementById("modalErro"),
+        { backdrop: false }
+    );
+
+    modalErro.show();
+}
+
+function somenteNumeros(valor) {
+    return valor.replace(/\D/g, "");
+}
+
+function aplicarMascaraCPF(valor) {
+    valor = somenteNumeros(valor);
+    valor = valor.replace(/(\d{3})(\d)/, "$1.$2");
+    valor = valor.replace(/(\d{3})(\d)/, "$1.$2");
+    valor = valor.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+    return valor;
+}
+
+function aplicarMascaraTelefone(valor) {
+    valor = somenteNumeros(valor);
+
+    if (valor.length <= 10) {
+        valor = valor.replace(/(\d{2})(\d)/, "($1) $2");
+        valor = valor.replace(/(\d{4})(\d)/, "$1-$2");
+    } else {
+        valor = valor.replace(/(\d{2})(\d)/, "($1) $2");
+        valor = valor.replace(/(\d{5})(\d)/, "$1-$2");
+    }
+
+    return valor;
+}
+
+function validarCPF(cpf) {
+    cpf = somenteNumeros(cpf);
+
+    if (cpf.length !== 11) return false;
+
+    if (/^(\d)\1+$/.test(cpf)) return false;
+
+    let soma = 0;
+    let resto;
+
+    for (let i = 1; i <= 9; i++) {
+        soma += parseInt(cpf.substring(i - 1, i)) * (11 - i);
+    }
+
+    resto = (soma * 10) % 11;
+
+    if ((resto === 10) || (resto === 11)) resto = 0;
+
+    if (resto !== parseInt(cpf.substring(9, 10))) return false;
+
+    soma = 0;
+
+    for (let i = 1; i <= 10; i++) {
+        soma += parseInt(cpf.substring(i - 1, i)) * (12 - i);
+    }
+
+    resto = (soma * 10) % 11;
+
+    if ((resto === 10) || (resto === 11)) resto = 0;
+
+    if (resto !== parseInt(cpf.substring(10, 11))) return false;
+
+    return true;
+}
+
+document.getElementById("cpf").addEventListener("input", function() {
+    this.value = aplicarMascaraCPF(this.value);
+});
+
+document.getElementById("telefone").addEventListener("input", function() {
+    this.value = aplicarMascaraTelefone(this.value);
+});
+
+function carregarModalidadesSelect() {
+    return fetch("/api/modalidades")
+        .then(response => response.json())
+        .then(data => {
+            modalidadesCache = data;
+
+            const select = document.getElementById("modalidade_id");
+            select.innerHTML = `<option value="">Selecione...</option>`;
+
+            data.forEach(item => {
+                select.innerHTML += `
+                    <option value="${item.id}">
+                        ${item.nome}
+                    </option>
+                `;
+            });
+        });
+}
+
+function carregarAlunos() {
+    document.getElementById("loader").style.display = "block";
+    document.getElementById("conteudo").style.display = "none";
+
+    fetch("/api/alunos")
+        .then(response => response.json())
+        .then(data => {
+            alunosCache = data;
+
+            const tabela = document.getElementById("tabelaAlunos");
+            tabela.innerHTML = "";
+
+            if (data.length === 0) {
+                tabela.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">
+                            Nenhum participante cadastrado.
+                        </td>
+                    </tr>
+                `;
+            } else {
+                data.forEach(item => {
+                    tabela.innerHTML += `
+                        <tr>
+                            <td>${item.nome}</td>
+                            <td>${item.cpf}</td>
+                            <td>${item.telefone}</td>
+                            <td>${item.modalidade_nome || "-"}</td>
+                            <td>
+                                <span class="badge ${item.status === 'ativo' ? 'bg-success' : 'bg-secondary'}">
+                                    ${item.status}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-warning" onclick="abrirEdicaoAluno(${item.id})">
+                                    Editar
+                                </button>
+
+                                <button class="btn btn-sm btn-danger" onclick="abrirExcluirAluno(${item.id})">
+                                    Excluir
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            document.getElementById("loader").style.display = "none";
+            document.getElementById("conteudo").style.display = "block";
+        });
+}
+
+function abrirCadastroAluno() {
+    document.getElementById("tituloAluno").innerText = "Novo Participante";
+    document.getElementById("aluno_id").value = "";
+    document.getElementById("formAluno").reset();
+    document.getElementById("status").value = "ativo";
+
+    carregarModalidadesSelect().then(() => {
+        const modal = new bootstrap.Modal(document.getElementById("modalAluno"));
+        modal.show();
+    });
+}
+
+function abrirEdicaoAluno(id) {
+    const aluno = alunosCache.find(item => item.id === id);
+
+    if (!aluno) {
+        mostrarMensagem("Atenção", "Participante não encontrado.");
+        return;
+    }
+
+    carregarModalidadesSelect().then(() => {
+        document.getElementById("tituloAluno").innerText = "Editar Participante";
+        document.getElementById("aluno_id").value = aluno.id;
+        document.getElementById("nome").value = aluno.nome;
+        document.getElementById("cpf").value = aplicarMascaraCPF(aluno.cpf || "");
+        document.getElementById("telefone").value = aplicarMascaraTelefone(aluno.telefone || "");
+        document.getElementById("endereco").value = aluno.endereco || "";
+        document.getElementById("modalidade_id").value = aluno.modalidade_id || "";
+        document.getElementById("status").value = aluno.status || "ativo";
+
+        const modal = new bootstrap.Modal(document.getElementById("modalAluno"));
+        modal.show();
+    });
+}
+
+document.getElementById("formAluno").addEventListener("submit", function(e) {
+    e.preventDefault();
+
+    const id = document.getElementById("aluno_id").value;
+    const nome = document.getElementById("nome").value.trim();
+    const cpf = document.getElementById("cpf").value.trim();
+    const telefone = document.getElementById("telefone").value.trim();
+    const endereco = document.getElementById("endereco").value.trim();
+    const modalidade_id = document.getElementById("modalidade_id").value;
+    const status = document.getElementById("status").value;
+
+    if (!nome) {
+        mostrarMensagem("Atenção", "O nome do participante é obrigatório.");
+        return;
+    }
+
+    if (!cpf) {
+        mostrarMensagem("Atenção", "O CPF do participante é obrigatório.");
+        return;
+    }
+
+    if (!validarCPF(cpf)) {
+        mostrarMensagem("Atenção", "O CPF informado é inválido.");
+        return;
+    }
+
+    if (!telefone) {
+        mostrarMensagem("Atenção", "O telefone do participante é obrigatório.");
+        return;
+    }
+
+    if (!endereco) {
+        mostrarMensagem("Atenção", "O endereço do participante é obrigatório.");
+        return;
+    }
+
+    if (!modalidade_id) {
+        mostrarMensagem("Atenção", "A modalidade é obrigatória.");
+        return;
+    }
+
+    const btn = document.getElementById("btnSalvarAluno");
+
+    const url = id ? `/api/alunos/${id}` : "/api/alunos";
+    const metodo = id ? "PUT" : "POST";
+
+    btn.disabled = true;
+    btn.innerHTML = `
+        <span class="spinner-border spinner-border-sm me-2"></span>
+        Salvando...
+    `;
+
+    fetch(url, {
+        method: metodo,
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            nome: nome,
+            cpf: somenteNumeros(cpf),
+            telefone: telefone,
+            endereco: endereco,
+            modalidade_id: modalidade_id,
+            status: status
+        })
+    })
+    .then(async response => {
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw data;
+        }
+
+        return data;
+    })
+    .then(data => {
+        const modalCadastro = bootstrap.Modal.getInstance(
+            document.getElementById("modalAluno")
+        );
+
+        modalCadastro.hide();
+
+        carregarAlunos();
+    })
+    .catch(error => {
+        mostrarMensagem(
+            "Atenção",
+            error.mensagem || "Verifique os dados informados."
+        );
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = "Salvar";
+    });
+});
+
+function abrirExcluirAluno(id) {
+    document.getElementById("idExcluirAluno").value = id;
+
+    const modal = new bootstrap.Modal(document.getElementById("modalConfirmarAluno"));
+    modal.show();
+}
+
+function confirmarExclusaoAluno() {
+    const id = document.getElementById("idExcluirAluno").value;
+
+    fetch(`/api/alunos/${id}`, {
+        method: "DELETE"
+    })
+    .then(async response => {
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw data;
+        }
+
+        return data;
+    })
+    .then(data => {
+        const modal = bootstrap.Modal.getInstance(
+            document.getElementById("modalConfirmarAluno")
+        );
+
+        modal.hide();
+
+        carregarAlunos();
+    })
+    .catch(error => {
+        mostrarMensagem(
+            "Atenção",
+            error.mensagem || "Não foi possível excluir o participante."
+        );
+    });
+}
+
+carregarAlunos();
+</script>
+
+{% endblock %}

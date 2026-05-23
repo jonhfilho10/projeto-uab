@@ -1,0 +1,345 @@
+{% extends "base.html" %}
+
+{% block title %}Modalidades{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Modalidades</h2>
+
+    <button class="btn btn-primary" onclick="abrirCadastro()">
+        Nova Modalidade
+    </button>
+</div>
+
+<div id="loader" class="alert alert-info">
+    Carregando modalidades...
+</div>
+
+<div id="conteudo" style="display: none;">
+    <div class="card shadow-sm">
+        <div class="card-body">
+
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Descrição</th>
+                        <th>Vagas</th>
+                        <th>Participantes</th>
+                        <th>Disponíveis</th>
+                        <th>Ocupação</th>
+                        <th width="160">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelaModalidades"></tbody>
+            </table>
+
+        </div>
+    </div>
+</div>
+
+<!-- MODAL CADASTRO / EDIÇÃO -->
+<div class="modal fade" id="modalModalidade" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <form id="formModalidade">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="tituloModalidade">Nova Modalidade</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <input type="hidden" id="modalidade_id">
+
+                    <div class="mb-3">
+                        <label>Nome da Modalidade</label>
+                        <input type="text" id="nome" class="form-control">
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Descrição</label>
+                        <textarea id="descricao" class="form-control"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Quantidade de Vagas</label>
+                        <input type="number" id="vagas" class="form-control" value="0">
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+
+                    <button type="submit" id="btnSalvarModalidade" class="btn btn-primary">
+                        Salvar
+                    </button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+</div>
+
+<!-- MODAL ALERTA -->
+<div class="modal fade" id="modalErro" tabindex="-1" style="z-index: 1065;">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-body text-center p-4">
+
+                <div class="mb-3">
+                    <div class="erro-icone warning-icone mx-auto">!</div>
+                </div>
+
+                <h6 class="fw-bold mb-2" id="modalTitulo">Atenção</h6>
+
+                <p class="text-muted mb-3" id="modalMensagem">
+                    Verifique os dados informados.
+                </p>
+
+                <button type="button" class="btn btn-primary btn-sm px-4" data-bs-dismiss="modal">
+                    OK
+                </button>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL CONFIRMAÇÃO EXCLUSÃO -->
+<div class="modal fade" id="modalConfirmar" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-body text-center p-4">
+
+                <div class="mb-3">
+                    <div class="erro-icone warning-icone mx-auto">!</div>
+                </div>
+
+                <h6 class="fw-bold mb-2">Confirmar exclusão</h6>
+
+                <p class="text-muted mb-3">
+                    Deseja realmente excluir esta modalidade?
+                </p>
+
+                <input type="hidden" id="idExcluir">
+
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+
+                <button type="button" class="btn btn-danger btn-sm" onclick="confirmarExclusao()">
+                    Excluir
+                </button>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+
+<script>
+let modalidadesCache = [];
+
+function mostrarMensagem(titulo, mensagem) {
+    document.getElementById("modalTitulo").innerText = titulo;
+    document.getElementById("modalMensagem").innerText = mensagem;
+
+    const modalErro = new bootstrap.Modal(
+        document.getElementById("modalErro"),
+        { backdrop: false }
+    );
+
+    modalErro.show();
+}
+
+function carregarModalidades() {
+    document.getElementById("loader").style.display = "block";
+    document.getElementById("conteudo").style.display = "none";
+
+    fetch("/api/modalidades")
+        .then(response => response.json())
+        .then(data => {
+            modalidadesCache = data;
+
+            const tabela = document.getElementById("tabelaModalidades");
+            tabela.innerHTML = "";
+
+            if (data.length === 0) {
+                tabela.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center text-muted">
+                            Nenhuma modalidade cadastrada.
+                        </td>
+                    </tr>
+                `;
+            } else {
+                data.forEach(item => {
+                    tabela.innerHTML += `
+                        <tr>
+                            <td>${item.nome}</td>
+                            <td>${item.descricao || "-"}</td>
+                            <td>${item.vagas}</td>
+                            <td>${item.total_participantes}</td>
+                            <td>${item.vagas_disponiveis}</td>
+                            <td>
+                                <div class="progress" style="height: 18px;">
+                                    <div class="progress-bar"
+                                         role="progressbar"
+                                         style="width: ${item.percentual_ocupacao}%;">
+                                        ${item.percentual_ocupacao}%
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-warning" onclick="abrirEdicao(${item.id})">
+                                    Editar
+                                </button>
+
+                                <button class="btn btn-sm btn-danger" onclick="abrirExcluir(${item.id})">
+                                    Excluir
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            document.getElementById("loader").style.display = "none";
+            document.getElementById("conteudo").style.display = "block";
+        });
+}
+
+function abrirCadastro() {
+    document.getElementById("tituloModalidade").innerText = "Nova Modalidade";
+    document.getElementById("modalidade_id").value = "";
+    document.getElementById("formModalidade").reset();
+    document.getElementById("vagas").value = 0;
+
+    const modal = new bootstrap.Modal(document.getElementById("modalModalidade"));
+    modal.show();
+}
+
+function abrirEdicao(id) {
+    const modalidade = modalidadesCache.find(item => item.id === id);
+
+    if (!modalidade) {
+        mostrarMensagem("Atenção", "Modalidade não encontrada.");
+        return;
+    }
+
+    document.getElementById("tituloModalidade").innerText = "Editar Modalidade";
+    document.getElementById("modalidade_id").value = modalidade.id;
+    document.getElementById("nome").value = modalidade.nome;
+    document.getElementById("descricao").value = modalidade.descricao || "";
+    document.getElementById("vagas").value = modalidade.vagas;
+
+    const modal = new bootstrap.Modal(document.getElementById("modalModalidade"));
+    modal.show();
+}
+
+document.getElementById("formModalidade").addEventListener("submit", function(e) {
+    e.preventDefault();
+
+    const id = document.getElementById("modalidade_id").value;
+    const btn = document.getElementById("btnSalvarModalidade");
+
+    const url = id ? `/api/modalidades/${id}` : "/api/modalidades";
+    const metodo = id ? "PUT" : "POST";
+
+    btn.disabled = true;
+    btn.innerHTML = `
+        <span class="spinner-border spinner-border-sm me-2"></span>
+        Salvando...
+    `;
+
+    fetch(url, {
+        method: metodo,
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            nome: document.getElementById("nome").value,
+            descricao: document.getElementById("descricao").value,
+            vagas: document.getElementById("vagas").value
+        })
+    })
+    .then(async response => {
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw data;
+        }
+
+        return data;
+    })
+    .then(data => {
+        const modalCadastro = bootstrap.Modal.getInstance(
+            document.getElementById("modalModalidade")
+        );
+
+        modalCadastro.hide();
+
+        carregarModalidades();
+    })
+    .catch(error => {
+        mostrarMensagem(
+            "Atenção",
+            error.mensagem || "Verifique os dados informados."
+        );
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = "Salvar";
+    });
+});
+
+function abrirExcluir(id) {
+    document.getElementById("idExcluir").value = id;
+
+    const modal = new bootstrap.Modal(document.getElementById("modalConfirmar"));
+    modal.show();
+}
+
+function confirmarExclusao() {
+    const id = document.getElementById("idExcluir").value;
+
+    fetch(`/api/modalidades/${id}`, {
+        method: "DELETE"
+    })
+    .then(async response => {
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw data;
+        }
+
+        return data;
+    })
+    .then(data => {
+        const modal = bootstrap.Modal.getInstance(
+            document.getElementById("modalConfirmar")
+        );
+
+        modal.hide();
+
+        carregarModalidades();
+    })
+    .catch(error => {
+        mostrarMensagem(
+            "Atenção",
+            error.mensagem || "Não foi possível excluir a modalidade."
+        );
+    });
+}
+
+carregarModalidades();
+</script>
+
+{% endblock %}

@@ -1,0 +1,363 @@
+{% extends "base.html" %}
+
+{% block title %}Usuários{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Usuários</h2>
+
+    <button class="btn btn-primary" onclick="abrirCadastroUsuario()">
+        Novo Usuário
+    </button>
+</div>
+
+<div id="loader" class="alert alert-info">
+    Carregando usuários...
+</div>
+
+<div id="conteudo" style="display: none;">
+    <div class="card shadow-sm">
+        <div class="card-body">
+
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>E-mail</th>
+                        <th>Perfil</th>
+                        <th>Status</th>
+                        <th width="170">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelaUsuarios"></tbody>
+            </table>
+
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalUsuario" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <form id="formUsuario">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="tituloUsuario">Novo Usuário</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <input type="hidden" id="usuario_id">
+
+                    <div class="mb-3">
+                        <label>Nome</label>
+                        <input type="text" id="nome" class="form-control">
+                    </div>
+
+                    <div class="mb-3">
+                        <label>E-mail</label>
+                        <input type="email" id="email" class="form-control">
+                    </div>
+
+                    <div class="mb-3" id="campoSenha">
+                        <label>Senha</label>
+                        <input type="password" id="senha" class="form-control">
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Perfil</label>
+                        <select id="perfil" class="form-control">
+                            <option value="atendente">Atendente</option>
+                            <option value="administrador">Administrador</option>
+                            <option value="cliente">Cliente</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Status</label>
+                        <select id="status" class="form-control">
+                            <option value="ativo">Ativo</option>
+                            <option value="inativo">Inativo</option>
+                        </select>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+
+                    <button type="submit" id="btnSalvarUsuario" class="btn btn-primary">
+                        Salvar
+                    </button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalErro" tabindex="-1" style="z-index: 1065;">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-body text-center p-4">
+
+                <div class="mb-3">
+                    <div class="erro-icone warning-icone mx-auto">!</div>
+                </div>
+
+                <h6 class="fw-bold mb-2" id="modalTitulo">Atenção</h6>
+
+                <p class="text-muted mb-3" id="modalMensagem">
+                    Verifique os dados informados.
+                </p>
+
+                <button type="button" class="btn btn-primary btn-sm px-4" data-bs-dismiss="modal">
+                    OK
+                </button>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalConfirmarUsuario" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-body text-center p-4">
+
+                <div class="mb-3">
+                    <div class="erro-icone warning-icone mx-auto">!</div>
+                </div>
+
+                <h6 class="fw-bold mb-2">Confirmar exclusão</h6>
+
+                <p class="text-muted mb-3">
+                    Deseja realmente excluir este usuário?
+                </p>
+
+                <input type="hidden" id="idExcluirUsuario">
+
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+
+                <button type="button" class="btn btn-danger btn-sm" onclick="confirmarExclusaoUsuario()">
+                    Excluir
+                </button>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+
+<script>
+let usuariosCache = [];
+
+function mostrarMensagem(titulo, mensagem) {
+    document.getElementById("modalTitulo").innerText = titulo;
+    document.getElementById("modalMensagem").innerText = mensagem;
+
+    const modalErro = new bootstrap.Modal(
+        document.getElementById("modalErro"),
+        { backdrop: false }
+    );
+
+    modalErro.show();
+}
+
+function carregarUsuarios() {
+    document.getElementById("loader").style.display = "block";
+    document.getElementById("conteudo").style.display = "none";
+
+    fetch("/api/usuarios")
+        .then(response => response.json())
+        .then(data => {
+            usuariosCache = data;
+
+            const tabela = document.getElementById("tabelaUsuarios");
+            tabela.innerHTML = "";
+
+            if (data.length === 0) {
+                tabela.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center text-muted">
+                            Nenhum usuário cadastrado.
+                        </td>
+                    </tr>
+                `;
+            } else {
+                data.forEach(item => {
+                    tabela.innerHTML += `
+                        <tr>
+                            <td>${item.nome}</td>
+                            <td>${item.email}</td>
+                            <td>${item.perfil}</td>
+                            <td>
+                                <span class="badge ${item.status === 'ativo' ? 'bg-success' : 'bg-secondary'}">
+                                    ${item.status}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-warning" onclick="abrirEdicaoUsuario(${item.id})">
+                                    Editar
+                                </button>
+
+                                <button class="btn btn-sm btn-danger" onclick="abrirExcluirUsuario(${item.id})">
+                                    Excluir
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            document.getElementById("loader").style.display = "none";
+            document.getElementById("conteudo").style.display = "block";
+        });
+}
+
+function abrirCadastroUsuario() {
+    document.getElementById("tituloUsuario").innerText = "Novo Usuário";
+    document.getElementById("usuario_id").value = "";
+    document.getElementById("formUsuario").reset();
+    document.getElementById("campoSenha").style.display = "block";
+    document.getElementById("perfil").value = "atendente";
+    document.getElementById("status").value = "ativo";
+
+    const modal = new bootstrap.Modal(document.getElementById("modalUsuario"));
+    modal.show();
+}
+
+function abrirEdicaoUsuario(id) {
+    const usuario = usuariosCache.find(item => item.id === id);
+
+    if (!usuario) {
+        mostrarMensagem("Atenção", "Usuário não encontrado.");
+        return;
+    }
+
+    document.getElementById("tituloUsuario").innerText = "Editar Usuário";
+    document.getElementById("usuario_id").value = usuario.id;
+    document.getElementById("nome").value = usuario.nome;
+    document.getElementById("email").value = usuario.email;
+    document.getElementById("perfil").value = usuario.perfil;
+    document.getElementById("status").value = usuario.status;
+    document.getElementById("campoSenha").style.display = "none";
+
+    const modal = new bootstrap.Modal(document.getElementById("modalUsuario"));
+    modal.show();
+}
+
+document.getElementById("formUsuario").addEventListener("submit", function(e) {
+    e.preventDefault();
+
+    const id = document.getElementById("usuario_id").value;
+    const btn = document.getElementById("btnSalvarUsuario");
+
+    const url = id ? `/api/usuarios/${id}` : "/api/usuarios";
+    const metodo = id ? "PUT" : "POST";
+
+    btn.disabled = true;
+    btn.innerHTML = `
+        <span class="spinner-border spinner-border-sm me-2"></span>
+        Salvando...
+    `;
+
+    const dados = {
+        nome: document.getElementById("nome").value,
+        email: document.getElementById("email").value,
+        perfil: document.getElementById("perfil").value,
+        status: document.getElementById("status").value
+    };
+
+    if (!id) {
+        dados.senha = document.getElementById("senha").value;
+    }
+
+    fetch(url, {
+        method: metodo,
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(dados)
+    })
+    .then(async response => {
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw data;
+        }
+
+        return data;
+    })
+    .then(data => {
+        const modalCadastro = bootstrap.Modal.getInstance(
+            document.getElementById("modalUsuario")
+        );
+
+        modalCadastro.hide();
+
+        carregarUsuarios();
+    })
+    .catch(error => {
+        mostrarMensagem(
+            "Atenção",
+            error.mensagem || "Verifique os dados informados."
+        );
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = "Salvar";
+    });
+});
+
+function abrirExcluirUsuario(id) {
+    document.getElementById("idExcluirUsuario").value = id;
+
+    const modal = new bootstrap.Modal(document.getElementById("modalConfirmarUsuario"));
+    modal.show();
+}
+
+function confirmarExclusaoUsuario() {
+    const id = document.getElementById("idExcluirUsuario").value;
+
+    fetch(`/api/usuarios/${id}`, {
+        method: "DELETE"
+    })
+    .then(async response => {
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw data;
+        }
+
+        return data;
+    })
+    .then(data => {
+        const modal = bootstrap.Modal.getInstance(
+            document.getElementById("modalConfirmarUsuario")
+        );
+
+        modal.hide();
+
+        carregarUsuarios();
+    })
+    .catch(error => {
+        mostrarMensagem(
+            "Atenção",
+            error.mensagem || "Não foi possível excluir o usuário."
+        );
+    });
+}
+
+carregarUsuarios();
+</script>
+
+{% endblock %}

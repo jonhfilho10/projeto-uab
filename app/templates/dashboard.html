@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+
+<h2 class="mb-4">Dashboard</h2>
+
+{% if request.args.get('erro') == 'sem_permissao' %}
+
+<div class="modal fade show"
+     id="modalPermissao"
+     tabindex="-1"
+     style="display:block; background: rgba(0,0,0,0.4); z-index: 2000;">
+
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+
+        <div class="modal-content border-0 shadow-lg rounded-4">
+
+            <div class="modal-body text-center p-4">
+
+                <div class="mb-3">
+                    <div class="erro-icone warning-icone mx-auto">
+                        !
+                    </div>
+                </div>
+
+                <h6 class="fw-bold mb-2">
+                    Acesso Negado
+                </h6>
+
+                <p class="text-muted mb-3">
+                    Você não possui permissão para acessar esta área do sistema.
+                </p>
+
+                <button type="button"
+                        class="btn btn-primary btn-sm px-4"
+                        onclick="fecharModalPermissao()">
+                    OK
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endif %}
+
+<div id="loader" class="alert alert-info">
+    Carregando dados do sistema...
+</div>
+
+<div id="conteudo" style="display: none;">
+
+    <div class="row mb-4">
+
+        <div class="col-md-3 mb-3">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <h6>Alunos Ativos</h6>
+                    <h3 id="alunos_ativos">0</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <h6>Alunos Inativos</h6>
+                    <h3 id="alunos_inativos">0</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <h6>Modalidades</h6>
+                    <h3 id="modalidades">0</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <h6>Total de Alunos</h6>
+                    <h3 id="total_alunos">0</h3>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white">
+            <strong>Ocupação por Modalidade</strong>
+        </div>
+
+        <div class="card-body">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Modalidade</th>
+                        <th>Participantes</th>
+                        <th>Vagas</th>
+                        <th>Ocupação</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelaOcupacao"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 mt-4">
+        <div class="card-header bg-white">
+            <strong>Gráfico de Participantes por Modalidade</strong>
+        </div>
+
+        <div class="card-body">
+            <canvas id="graficoModalidades" height="100"></canvas>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+
+function fecharModalPermissao() {
+    document.getElementById("modalPermissao").style.display = "none";
+
+    const url = new URL(window.location);
+    url.searchParams.delete("erro");
+
+    window.history.replaceState({}, document.title, url.pathname);
+}
+
+fetch("/api/dashboard")
+    .then(response => response.json())
+    .then(data => {
+
+        document.getElementById("alunos_ativos").innerText = data.alunos_ativos;
+        document.getElementById("alunos_inativos").innerText = data.alunos_inativos;
+        document.getElementById("modalidades").innerText = data.modalidades;
+        document.getElementById("total_alunos").innerText = data.total_alunos;
+
+        const tabela = document.getElementById("tabelaOcupacao");
+        tabela.innerHTML = "";
+
+        if (data.ocupacao_modalidades.length === 0) {
+
+            tabela.innerHTML = `
+                <tr>
+                    <td colspan="4" class="text-center text-muted">
+                        Nenhuma modalidade cadastrada.
+                    </td>
+                </tr>
+            `;
+
+        } else {
+
+            data.ocupacao_modalidades.forEach(item => {
+
+                tabela.innerHTML += `
+                    <tr>
+                        <td>${item.modalidade}</td>
+                        <td>${item.participantes}</td>
+                        <td>${item.vagas}</td>
+                        <td>
+                            <div class="progress" style="height: 18px;">
+                                <div class="progress-bar"
+                                     role="progressbar"
+                                     style="width: ${item.percentual}%;">
+                                    ${item.percentual}%
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        const labels = data.ocupacao_modalidades.map(item => item.modalidade);
+
+        const valores = data.ocupacao_modalidades.map(
+            item => item.participantes
+        );
+
+        new Chart(document.getElementById("graficoModalidades"), {
+
+            type: "bar",
+
+            data: {
+                labels: labels,
+
+                datasets: [{
+                    label: "Participantes",
+                    data: valores,
+                    borderWidth: 1
+                }]
+            },
+
+            options: {
+                responsive: true,
+
+                plugins: {
+                    legend: {
+                        display: true
+                    }
+                },
+
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+
+        });
+
+        document.getElementById("loader").style.display = "none";
+        document.getElementById("conteudo").style.display = "block";
+
+    });
+
+</script>
+
+{% endblock %}

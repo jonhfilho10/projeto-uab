@@ -1,0 +1,40 @@
+body {
+    background-color: #f4f6f9;
+}
+
+.sidebar {
+    width: 240px;
+    min-height: calc(100vh - 56px);
+}
+
+.menu-link {
+    display: block;
+    color: #fff;
+    text-decoration: none;
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 6px;
+}
+
+.menu-link:hover {
+    background-color: rgba(255,255,255,0.15);
+}
+
+.content {
+    width: 100%;
+}
+
+
+.erro-icone {
+    width: 55px;
+    height: 55px;
+    border-radius: 50%;
+    font-size: 36px;
+    line-height: 50px;
+    font-weight: 300;
+}
+
+.warning-icone {
+    border: 2px solid #f6c343;
+    color: #f6c343;
+}

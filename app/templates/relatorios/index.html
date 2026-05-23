@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block title %}Relatórios{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Relatórios</h2>
+
+    <div>
+        <button class="btn btn-success me-2"
+              onclick="exportarExcelAlunos()">
+              Exportar Participantes
+        </button>
+         <button class="btn btn-success me-2"
+            onclick="exportarExcelModalidades()">
+            Exportar Modalidades
+         </button>
+         <button class="btn btn-secondary"
+            onclick="window.print()">
+            Imprimir
+         </button>
+    </div>
+</div>
+
+<ul class="nav nav-tabs mb-4">
+    <li class="nav-item">
+        <button id="tabAlunos" class="nav-link active" onclick="mostrarRelatorio('alunos')">
+            Participantes
+        </button>
+    </li>
+
+    <li class="nav-item">
+        <button id="tabModalidades" class="nav-link" onclick="mostrarRelatorio('modalidades')">
+            Modalidades
+        </button>
+    </li>
+</ul>
+
+<div id="loader" class="alert alert-info">
+    Carregando relatório...
+</div>
+
+<div id="relatorioAlunos" style="display:none;">
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <strong>Relatório de Participantes</strong>
+        </div>
+
+        <div class="card-body">
+
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label>Modalidade</label>
+                    <select id="filtroModalidade" class="form-control">
+                        <option value="">Todas</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label>Status</label>
+                    <select id="filtroStatus" class="form-control">
+                        <option value="">Todos</option>
+                        <option value="ativo">Ativo</option>
+                        <option value="inativo">Inativo</option>
+                    </select>
+                </div>
+
+                <div class="col-md-5 d-flex align-items-end">
+                    <button class="btn btn-primary me-2" onclick="carregarRelatorioAlunos()">
+                        Filtrar
+                    </button>
+
+                    <button class="btn btn-secondary" onclick="limparFiltros()">
+                        Limpar
+                    </button>
+                </div>
+            </div>
+
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>CPF</th>
+                        <th>Telefone</th>
+                        <th>Modalidade</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelaRelatorioAlunos"></tbody>
+            </table>
+
+        </div>
+    </div>
+</div>
+
+<div id="relatorioModalidades" style="display:none;">
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <strong>Relatório de Modalidades</strong>
+        </div>
+
+        <div class="card-body">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Modalidade</th>
+                        <th>Vagas</th>
+                        <th>Participantes</th>
+                        <th>Disponíveis</th>
+                        <th>Ocupação</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelaRelatorioModalidades"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+
+<script>
+function esconderTodos() {
+    document.getElementById("relatorioAlunos").style.display = "none";
+    document.getElementById("relatorioModalidades").style.display = "none";
+    document.getElementById("loader").style.display = "block";
+}
+
+function mostrarRelatorio(tipo) {
+    esconderTodos();
+
+    document.getElementById("tabAlunos").classList.remove("active");
+    document.getElementById("tabModalidades").classList.remove("active");
+
+    if (tipo === "alunos") {
+        document.getElementById("tabAlunos").classList.add("active");
+        carregarRelatorioAlunos();
+    }
+
+    if (tipo === "modalidades") {
+        document.getElementById("tabModalidades").classList.add("active");
+        carregarRelatorioModalidades();
+    }
+}
+
+function carregarRelatorioAlunos() {
+    const modalidade = document.getElementById("filtroModalidade")?.value || "";
+    const status = document.getElementById("filtroStatus")?.value || "";
+
+    const url = `/api/relatorios/alunos?modalidade_id=${modalidade}&status=${status}`;
+
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            const tabela = document.getElementById("tabelaRelatorioAlunos");
+            tabela.innerHTML = "";
+
+            if (data.length === 0) {
+                tabela.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center text-muted">
+                            Nenhum participante encontrado.
+                        </td>
+                    </tr>
+                `;
+            } else {
+                data.forEach(item => {
+                    tabela.innerHTML += `
+                        <tr>
+                            <td>${item.nome}</td>
+                            <td>${item.cpf}</td>
+                            <td>${item.telefone}</td>
+                            <td>${item.modalidade}</td>
+                            <td>
+                                <span class="badge ${item.status === 'ativo' ? 'bg-success' : 'bg-secondary'}">
+                                    ${item.status}
+                                </span>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            document.getElementById("loader").style.display = "none";
+            document.getElementById("relatorioAlunos").style.display = "block";
+        });
+}
+
+function carregarRelatorioModalidades() {
+    fetch("/api/relatorios/modalidades")
+        .then(response => response.json())
+        .then(data => {
+            const tabela = document.getElementById("tabelaRelatorioModalidades");
+            tabela.innerHTML = "";
+
+            if (data.length === 0) {
+                tabela.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center text-muted">
+                            Nenhuma modalidade encontrada.
+                        </td>
+                    </tr>
+                `;
+            } else {
+                data.forEach(item => {
+                    tabela.innerHTML += `
+                        <tr>
+                            <td>${item.nome}</td>
+                            <td>${item.vagas}</td>
+                            <td>${item.total_participantes}</td>
+                            <td>${item.vagas_disponiveis}</td>
+                            <td>
+                                <div class="progress" style="height: 18px;">
+                                    <div class="progress-bar"
+                                         role="progressbar"
+                                         style="width: ${item.percentual_ocupacao}%;">
+                                        ${item.percentual_ocupacao}%
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            document.getElementById("loader").style.display = "none";
+            document.getElementById("relatorioModalidades").style.display = "block";
+        });
+}
+
+function carregarModalidadesFiltro() {
+    fetch("/api/modalidades")
+        .then(response => response.json())
+        .then(data => {
+            const select = document.getElementById("filtroModalidade");
+            select.innerHTML = `<option value="">Todas</option>`;
+
+            data.forEach(item => {
+                select.innerHTML += `
+                    <option value="${item.id}">
+                        ${item.nome}
+                    </option>
+                `;
+            });
+        });
+}
+
+function limparFiltros() {
+    document.getElementById("filtroModalidade").value = "";
+    document.getElementById("filtroStatus").value = "";
+    carregarRelatorioAlunos();
+}
+
+carregarModalidadesFiltro();
+carregarRelatorioAlunos();
+
+function exportarExcelAlunos() {
+    window.open("/api/exportar/alunos", "_blank");
+}
+
+function exportarExcelModalidades() {
+    window.open("/api/exportar/modalidades", "_blank");
+}
+
+</script>
+
+{% endblock %}
