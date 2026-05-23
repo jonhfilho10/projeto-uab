@@ -26,6 +26,20 @@ Os testes devem validar:
 
 Adicionar ao `requirements.txt`:
 
+## Testes de Refatoração e Otimização
+
+### CT-031 — Validar carregamento do dashboard após refatoração
+O sistema deve continuar exibindo corretamente indicadores e gráficos.
+
+### CT-032 — Validar permissões após refatoração
+Usuários sem perfil administrador não devem acessar áreas administrativas.
+
+### CT-033 — Validar relatórios após otimização
+Relatórios devem continuar carregando dados, filtros e exportação.
+
+### CT-034 — Validar controle de vagas
+O sistema deve impedir cadastro de participantes quando a modalidade atingir o limite.
+
 ```txt
 pytest
 pytest-flask
