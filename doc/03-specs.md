@@ -1234,6 +1234,78 @@ O sistema deverá implementar:
 
 /logs
 ```
+---
+
+# Melhorias de Frontend
+
+## Interface
+
+O sistema possui interface responsiva utilizando Bootstrap, adaptando-se para:
+
+- desktop;
+- tablet;
+- mobile.
+
+## Componentes
+
+Foram implementados:
+
+- modais;
+- loading;
+- gráficos;
+- tabelas responsivas;
+- mensagens de erro;
+- feedback visual;
+- filtros;
+- exportação Excel.
+
+## Dashboard
+
+O dashboard apresenta:
+
+- indicadores;
+- gráfico estatístico;
+- ocupação por modalidade;
+- carregamento dinâmico via JSON.
+
+## Login
+
+A tela de login possui:
+
+- layout moderno;
+- validação visual;
+- feedback de carregamento;
+- mensagens dinâmicas;
+- responsividade.
+
+## Relatórios
+
+Os relatórios possuem:
+
+- filtros;
+- impressão;
+- exportação Excel;
+- estados vazios;
+- carregamento dinâmico.
+
+## Acessibilidade
+
+O sistema possui:
+
+- labels em formulários;
+- foco visível;
+- contraste adequado;
+- navegação simplificada.
+
+## Feedback Visual
+
+O sistema implementa:
+
+- loading/spinner;
+- mensagens de erro;
+- mensagens de sucesso;
+- validações visuais;
+- bloqueio de ações inválidas.
 
 ---
 
