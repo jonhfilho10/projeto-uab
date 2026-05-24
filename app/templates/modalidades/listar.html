@@ -5,9 +5,12 @@
 {% block content %}
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Modalidades</h2>
+    <div>
+        <h2 class="fw-bold mb-1">Modalidades</h2>
+        <p class="text-muted mb-0">Gerenciamento das atividades esportivas do projeto</p>
+    </div>
 
-    <button class="btn btn-primary" onclick="abrirCadastro()">
+    <button class="btn btn-primary px-4" onclick="abrirCadastro()">
         Nova Modalidade
     </button>
 </div>
@@ -17,9 +20,25 @@
 </div>
 
 <div id="conteudo" style="display: none;">
-    <div class="card shadow-sm">
-        <div class="card-body">
+    <div class="table-container">
 
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <input type="text"
+                       id="buscaModalidade"
+                       class="form-control"
+                       placeholder="Buscar por nome ou descrição..."
+                       onkeyup="filtrarModalidades()">
+            </div>
+
+            <div class="col-md-6 text-end">
+                <small class="text-muted">
+                    Total de registros: <strong id="totalRegistros">0</strong>
+                </small>
+            </div>
+        </div>
+
+        <div class="table-responsive">
             <table class="table table-hover align-middle">
                 <thead>
                     <tr>
@@ -34,14 +53,27 @@
                 </thead>
                 <tbody id="tabelaModalidades"></tbody>
             </table>
-
         </div>
+
+        <div class="d-flex justify-content-between align-items-center mt-4">
+            <small class="text-muted" id="infoPaginacao"></small>
+
+            <div>
+                <button class="btn btn-sm btn-secondary me-2" onclick="paginaAnterior()">
+                    Anterior
+                </button>
+
+                <button class="btn btn-sm btn-primary" onclick="proximaPagina()">
+                    Próxima
+                </button>
+            </div>
+        </div>
+
     </div>
 </div>
 
-<!-- MODAL CADASTRO / EDIÇÃO -->
 <div class="modal fade" id="modalModalidade" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
 
             <form id="formModalidade">
@@ -84,7 +116,6 @@
     </div>
 </div>
 
-<!-- MODAL ALERTA -->
 <div class="modal fade" id="modalErro" tabindex="-1" style="z-index: 1065;">
     <div class="modal-dialog modal-dialog-centered modal-sm">
         <div class="modal-content border-0 shadow-lg rounded-4">
@@ -109,7 +140,6 @@
     </div>
 </div>
 
-<!-- MODAL CONFIRMAÇÃO EXCLUSÃO -->
 <div class="modal fade" id="modalConfirmar" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-sm">
         <div class="modal-content border-0 shadow-lg rounded-4">
@@ -146,6 +176,10 @@
 
 <script>
 let modalidadesCache = [];
+let modalidadesFiltradas = [];
+
+let paginaAtual = 1;
+const itensPorPagina = 5;
 
 function mostrarMensagem(titulo, mensagem) {
     document.getElementById("modalTitulo").innerText = titulo;
@@ -167,53 +201,100 @@ function carregarModalidades() {
         .then(response => response.json())
         .then(data => {
             modalidadesCache = data;
+            modalidadesFiltradas = data;
+            paginaAtual = 1;
 
-            const tabela = document.getElementById("tabelaModalidades");
-            tabela.innerHTML = "";
-
-            if (data.length === 0) {
-                tabela.innerHTML = `
-                    <tr>
-                        <td colspan="7" class="text-center text-muted">
-                            Nenhuma modalidade cadastrada.
-                        </td>
-                    </tr>
-                `;
-            } else {
-                data.forEach(item => {
-                    tabela.innerHTML += `
-                        <tr>
-                            <td>${item.nome}</td>
-                            <td>${item.descricao || "-"}</td>
-                            <td>${item.vagas}</td>
-                            <td>${item.total_participantes}</td>
-                            <td>${item.vagas_disponiveis}</td>
-                            <td>
-                                <div class="progress" style="height: 18px;">
-                                    <div class="progress-bar"
-                                         role="progressbar"
-                                         style="width: ${item.percentual_ocupacao}%;">
-                                        ${item.percentual_ocupacao}%
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                <button class="btn btn-sm btn-warning" onclick="abrirEdicao(${item.id})">
-                                    Editar
-                                </button>
-
-                                <button class="btn btn-sm btn-danger" onclick="abrirExcluir(${item.id})">
-                                    Excluir
-                                </button>
-                            </td>
-                        </tr>
-                    `;
-                });
-            }
+            renderizarTabelaModalidades();
 
             document.getElementById("loader").style.display = "none";
             document.getElementById("conteudo").style.display = "block";
         });
+}
+
+function renderizarTabelaModalidades() {
+    const tabela = document.getElementById("tabelaModalidades");
+    tabela.innerHTML = "";
+
+    const inicio = (paginaAtual - 1) * itensPorPagina;
+    const fim = inicio + itensPorPagina;
+    const pagina = modalidadesFiltradas.slice(inicio, fim);
+
+    document.getElementById("totalRegistros").innerText = modalidadesFiltradas.length;
+
+    if (pagina.length === 0) {
+        tabela.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center text-muted">
+                    Nenhuma modalidade encontrada.
+                </td>
+            </tr>
+        `;
+    } else {
+        pagina.forEach(item => {
+            tabela.innerHTML += `
+                <tr>
+                    <td>${item.nome}</td>
+                    <td>${item.descricao || "-"}</td>
+                    <td>${item.vagas}</td>
+                    <td>${item.total_participantes}</td>
+                    <td>${item.vagas_disponiveis}</td>
+                    <td>
+                        <div class="progress" style="height: 18px;">
+                            <div class="progress-bar"
+                                 role="progressbar"
+                                 style="width: ${item.percentual_ocupacao}%;">
+                                ${item.percentual_ocupacao}%
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-warning" onclick="abrirEdicao(${item.id})">
+                            Editar
+                        </button>
+
+                        <button class="btn btn-sm btn-danger" onclick="abrirExcluir(${item.id})">
+                            Excluir
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    const totalPaginas = Math.ceil(modalidadesFiltradas.length / itensPorPagina) || 1;
+
+    document.getElementById("infoPaginacao").innerText =
+        `Página ${paginaAtual} de ${totalPaginas}`;
+}
+
+function filtrarModalidades() {
+    const busca = document.getElementById("buscaModalidade").value.toLowerCase();
+
+    modalidadesFiltradas = modalidadesCache.filter(item => {
+        return (
+            item.nome.toLowerCase().includes(busca) ||
+            (item.descricao || "").toLowerCase().includes(busca)
+        );
+    });
+
+    paginaAtual = 1;
+    renderizarTabelaModalidades();
+}
+
+function proximaPagina() {
+    const totalPaginas = Math.ceil(modalidadesFiltradas.length / itensPorPagina);
+
+    if (paginaAtual < totalPaginas) {
+        paginaAtual++;
+        renderizarTabelaModalidades();
+    }
+}
+
+function paginaAnterior() {
+    if (paginaAtual > 1) {
+        paginaAtual--;
+        renderizarTabelaModalidades();
+    }
 }
 
 function abrirCadastro() {

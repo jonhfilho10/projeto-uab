@@ -4,8 +4,10 @@
 
 {% block content %}
 
-<h2 class="mb-4">Dashboard</h2>
-
+<div class="mb-4">
+    <h2 class="fw-bold mb-1">Dashboard</h2>
+    <p class="text-muted mb-0">Visão geral do Projeto Social Esportivo</p>
+</div>
 {% if request.args.get('erro') == 'sem_permissao' %}
 
 <div class="modal fade show"
@@ -14,23 +16,17 @@
      style="display:block; background: rgba(0,0,0,0.4); z-index: 2000;">
 
     <div class="modal-dialog modal-dialog-centered modal-sm">
-
         <div class="modal-content border-0 shadow-lg rounded-4">
-
             <div class="modal-body text-center p-4">
 
                 <div class="mb-3">
-                    <div class="erro-icone warning-icone mx-auto">
-                        !
-                    </div>
+                    <div class="erro-icone warning-icone mx-auto">!</div>
                 </div>
 
-                <h6 class="fw-bold mb-2">
-                    Acesso Negado
-                </h6>
+                <h6 class="fw-bold mb-2">Acesso Negado</h6>
 
                 <p class="text-muted mb-3">
-                    Você não possui permissão para acessar esta área do sistema.
+                    Somente administradores podem acessar esta área do sistema.
                 </p>
 
                 <button type="button"
@@ -40,88 +36,163 @@
                 </button>
 
             </div>
-
         </div>
-
     </div>
-
 </div>
 
 {% endif %}
-
 <div id="loader" class="alert alert-info">
     Carregando dados do sistema...
 </div>
 
 <div id="conteudo" style="display: none;">
 
-    <div class="row mb-4">
+    <div class="row g-4 mb-4">
 
-        <div class="col-md-3 mb-3">
-            <div class="card shadow-sm border-0">
-                <div class="card-body">
-                    <h6>Alunos Ativos</h6>
-                    <h3 id="alunos_ativos">0</h3>
-                </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="dashboard-card">
+                <div class="card-icon bg-success-subtle text-success mb-4">👥</div>
+                <h6>Alunos Ativos</h6>
+                <h2 id="alunos_ativos">0</h2>
+                <small class="text-success fw-semibold">↑ +12% vs mês anterior</small>
             </div>
         </div>
 
-        <div class="col-md-3 mb-3">
-            <div class="card shadow-sm border-0">
-                <div class="card-body">
-                    <h6>Alunos Inativos</h6>
-                    <h3 id="alunos_inativos">0</h3>
-                </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="dashboard-card">
+                <div class="card-icon bg-secondary-subtle text-secondary mb-4">👤</div>
+                <h6>Alunos Inativos</h6>
+                <h2 id="alunos_inativos">0</h2>
+                <small class="text-muted fw-semibold">0% vs mês anterior</small>
             </div>
         </div>
 
-        <div class="col-md-3 mb-3">
-            <div class="card shadow-sm border-0">
-                <div class="card-body">
-                    <h6>Modalidades</h6>
-                    <h3 id="modalidades">0</h3>
-                </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="dashboard-card">
+                <div class="card-icon bg-primary-subtle text-primary mb-4">⚽</div>
+                <h6>Modalidades</h6>
+                <h2 id="modalidades">0</h2>
+                <small class="text-muted fw-semibold">+0% vs mês anterior</small>
             </div>
         </div>
 
-        <div class="col-md-3 mb-3">
-            <div class="card shadow-sm border-0">
-                <div class="card-body">
-                    <h6>Total de Alunos</h6>
-                    <h3 id="total_alunos">0</h3>
+        <div class="col-lg-3 col-md-6">
+            <div class="dashboard-card">
+                <div class="card-icon bg-info-subtle text-info mb-4">🎓</div>
+                <h6>Total de Alunos</h6>
+                <h2 id="total_alunos">0</h2>
+                <small class="text-success fw-semibold">↑ +12% vs mês anterior</small>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="row g-4 mb-4">
+
+        <div class="col-lg-6">
+            <div class="table-container h-100">
+                <h5 class="fw-bold mb-1">Ocupação por Modalidade</h5>
+                <p class="text-muted mb-4">Controle de vagas e participantes</p>
+
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Modalidade</th>
+                            <th>Participantes</th>
+                            <th>Vagas</th>
+                            <th>Ocupação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaOcupacao"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="table-container h-100">
+                <h5 class="fw-bold mb-1">Participantes por Modalidade</h5>
+                <p class="text-muted mb-4">Distribuição por atividade esportiva</p>
+
+                <div style="height: 280px;">
+                    <canvas id="graficoModalidades"></canvas>
                 </div>
             </div>
         </div>
 
     </div>
 
-    <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header bg-white">
-            <strong>Ocupação por Modalidade</strong>
+    <div class="row g-4 mb-4">
+
+        <div class="col-lg-6">
+            <div class="table-container h-100">
+                <h5 class="fw-bold mb-1">Distribuição por Status</h5>
+                <p class="text-muted mb-4">Ativos x Inativos</p>
+
+                <div style="height: 260px; max-width: 360px; margin: auto;">
+                    <canvas id="graficoStatus"></canvas>
+                </div>
+            </div>
         </div>
 
-        <div class="card-body">
-            <table class="table table-hover align-middle">
-                <thead>
-                    <tr>
-                        <th>Modalidade</th>
-                        <th>Participantes</th>
-                        <th>Vagas</th>
-                        <th>Ocupação</th>
-                    </tr>
-                </thead>
-                <tbody id="tabelaOcupacao"></tbody>
-            </table>
+        <div class="col-lg-6">
+            <div class="table-container h-100">
+                <h5 class="fw-bold mb-1">Evolução de Alunos</h5>
+                <p class="text-muted mb-4">Crescimento de alunos ativos</p>
+
+                <div style="height: 260px;">
+                    <canvas id="graficoEvolucao"></canvas>
+                </div>
+            </div>
         </div>
+
     </div>
 
-    <div class="card shadow-sm border-0 mt-4">
-        <div class="card-header bg-white">
-            <strong>Gráfico de Participantes por Modalidade</strong>
-        </div>
+    <div class="table-container">
+        <h5 class="fw-bold mb-1">Resumo Geral</h5>
+        <p class="text-muted mb-4">Indicadores principais do projeto</p>
 
-        <div class="card-body">
-            <canvas id="graficoModalidades" height="100"></canvas>
+        <div class="row g-4">
+
+            <div class="col-md-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="card-icon bg-success-subtle text-success">📊</div>
+                    <div>
+                        <small class="text-muted">Taxa de Ocupação Média</small>
+                        <h6 class="fw-bold mb-0" id="taxa_media">0%</h6>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="card-icon bg-warning-subtle text-warning">👥</div>
+                    <div>
+                        <small class="text-muted">Maior Ocupação</small>
+                        <h6 class="fw-bold mb-0" id="maior_ocupacao">-</h6>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="card-icon bg-danger-subtle text-danger">📉</div>
+                    <div>
+                        <small class="text-muted">Menor Ocupação</small>
+                        <h6 class="fw-bold mb-0" id="menor_ocupacao">-</h6>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="card-icon bg-primary-subtle text-primary">📅</div>
+                    <div>
+                        <small class="text-muted">Última Atualização</small>
+                        <h6 class="fw-bold mb-0">23/05/2026</h6>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -134,16 +205,6 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-
-function fecharModalPermissao() {
-    document.getElementById("modalPermissao").style.display = "none";
-
-    const url = new URL(window.location);
-    url.searchParams.delete("erro");
-
-    window.history.replaceState({}, document.title, url.pathname);
-}
-
 fetch("/api/dashboard")
     .then(response => response.json())
     .then(data => {
@@ -157,7 +218,6 @@ fetch("/api/dashboard")
         tabela.innerHTML = "";
 
         if (data.ocupacao_modalidades.length === 0) {
-
             tabela.innerHTML = `
                 <tr>
                     <td colspan="4" class="text-center text-muted">
@@ -165,18 +225,15 @@ fetch("/api/dashboard")
                     </td>
                 </tr>
             `;
-
         } else {
-
             data.ocupacao_modalidades.forEach(item => {
-
                 tabela.innerHTML += `
                     <tr>
                         <td>${item.modalidade}</td>
                         <td>${item.participantes}</td>
                         <td>${item.vagas}</td>
                         <td>
-                            <div class="progress" style="height: 18px;">
+                            <div class="progress" style="height: 22px;">
                                 <div class="progress-bar"
                                      role="progressbar"
                                      style="width: ${item.percentual}%;">
@@ -190,48 +247,123 @@ fetch("/api/dashboard")
         }
 
         const labels = data.ocupacao_modalidades.map(item => item.modalidade);
-
-        const valores = data.ocupacao_modalidades.map(
-            item => item.participantes
-        );
+        const participantes = data.ocupacao_modalidades.map(item => item.participantes);
 
         new Chart(document.getElementById("graficoModalidades"), {
-
             type: "bar",
-
             data: {
                 labels: labels,
-
                 datasets: [{
                     label: "Participantes",
-                    data: valores,
+                    data: participantes,
+                    backgroundColor: "rgba(0, 105, 255, 0.75)",
+                    borderColor: "rgba(0, 105, 255, 1)",
                     borderWidth: 1
                 }]
             },
-
             options: {
                 responsive: true,
-
+                maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        display: true
+                        position: "bottom"
                     }
                 },
-
                 scales: {
                     y: {
                         beginAtZero: true
                     }
                 }
             }
-
         });
+
+        new Chart(document.getElementById("graficoStatus"), {
+            type: "doughnut",
+            data: {
+                labels: ["Ativos", "Inativos"],
+                datasets: [{
+                    data: [data.alunos_ativos, data.alunos_inativos],
+                    backgroundColor: [
+                        "rgba(46, 204, 113, 0.85)",
+                        "rgba(173, 181, 189, 0.85)"
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: "62%",
+                plugins: {
+                    legend: {
+                        position: "right"
+                    }
+                }
+            }
+        });
+
+        new Chart(document.getElementById("graficoEvolucao"), {
+            type: "line",
+            data: {
+                labels: ["Jan", "Fev", "Mar", "Abr", "Mai"],
+                datasets: [{
+                    label: "Alunos",
+                    data: [1, 2, 3, 4, data.total_alunos],
+                    fill: true,
+                    backgroundColor: "rgba(0, 105, 255, 0.12)",
+                    borderColor: "rgba(0, 105, 255, 1)",
+                    tension: 0.35,
+                    borderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: "top"
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        if (data.ocupacao_modalidades.length > 0) {
+            const percentuais = data.ocupacao_modalidades.map(item => item.percentual);
+            const media = percentuais.reduce((a, b) => a + b, 0) / percentuais.length;
+
+            const maior = data.ocupacao_modalidades.reduce((a, b) =>
+                a.percentual > b.percentual ? a : b
+            );
+
+            const menor = data.ocupacao_modalidades.reduce((a, b) =>
+                a.percentual < b.percentual ? a : b
+            );
+
+            document.getElementById("taxa_media").innerText = media.toFixed(2) + "%";
+            document.getElementById("maior_ocupacao").innerText =
+                `${maior.modalidade} (${maior.percentual}%)`;
+
+            document.getElementById("menor_ocupacao").innerText =
+                `${menor.modalidade} (${menor.percentual}%)`;
+        }
 
         document.getElementById("loader").style.display = "none";
         document.getElementById("conteudo").style.display = "block";
 
     });
 
+function fecharModalPermissao() {
+    document.getElementById("modalPermissao").style.display = "none";
+
+    const url = new URL(window.location);
+    url.searchParams.delete("erro");
+
+    window.history.replaceState({}, document.title, url.pathname);
+}
 </script>
 
 {% endblock %}

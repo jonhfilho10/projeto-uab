@@ -5,9 +5,12 @@
 {% block content %}
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Participantes</h2>
+    <div>
+        <h2 class="fw-bold mb-1">Participantes</h2>
+        <p class="text-muted mb-0">Gerenciamento dos alunos cadastrados no projeto</p>
+    </div>
 
-    <button class="btn btn-primary" onclick="abrirCadastroAluno()">
+    <button class="btn btn-primary px-4" onclick="abrirCadastroAluno()">
         Novo Participante
     </button>
 </div>
@@ -17,9 +20,25 @@
 </div>
 
 <div id="conteudo" style="display: none;">
-    <div class="card shadow-sm">
-        <div class="card-body">
+    <div class="table-container">
 
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <input type="text"
+                       id="buscaAluno"
+                       class="form-control"
+                       placeholder="Buscar por nome, CPF, telefone ou modalidade..."
+                       onkeyup="filtrarAlunos()">
+            </div>
+
+            <div class="col-md-6 text-end">
+                <small class="text-muted">
+                    Total de registros: <strong id="totalRegistros">0</strong>
+                </small>
+            </div>
+        </div>
+
+        <div class="table-responsive">
             <table class="table table-hover align-middle">
                 <thead>
                     <tr>
@@ -33,14 +52,28 @@
                 </thead>
                 <tbody id="tabelaAlunos"></tbody>
             </table>
-
         </div>
+
+        <div class="d-flex justify-content-between align-items-center mt-4">
+            <small class="text-muted" id="infoPaginacao"></small>
+
+            <div>
+                <button class="btn btn-sm btn-secondary me-2" onclick="paginaAnterior()">
+                    Anterior
+                </button>
+
+                <button class="btn btn-sm btn-primary" onclick="proximaPagina()">
+                    Próxima
+                </button>
+            </div>
+        </div>
+
     </div>
 </div>
 
 <!-- MODAL CADASTRO / EDIÇÃO -->
 <div class="modal fade" id="modalAluno" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
 
             <form id="formAluno">
@@ -173,7 +206,11 @@
 
 <script>
 let alunosCache = [];
+let alunosFiltrados = [];
 let modalidadesCache = [];
+
+let paginaAtual = 1;
+const itensPorPagina = 5;
 
 function mostrarMensagem(titulo, mensagem) {
     document.getElementById("modalTitulo").innerText = titulo;
@@ -217,7 +254,6 @@ function validarCPF(cpf) {
     cpf = somenteNumeros(cpf);
 
     if (cpf.length !== 11) return false;
-
     if (/^(\d)\1+$/.test(cpf)) return false;
 
     let soma = 0;
@@ -228,9 +264,7 @@ function validarCPF(cpf) {
     }
 
     resto = (soma * 10) % 11;
-
     if ((resto === 10) || (resto === 11)) resto = 0;
-
     if (resto !== parseInt(cpf.substring(9, 10))) return false;
 
     soma = 0;
@@ -240,9 +274,7 @@ function validarCPF(cpf) {
     }
 
     resto = (soma * 10) % 11;
-
     if ((resto === 10) || (resto === 11)) resto = 0;
-
     if (resto !== parseInt(cpf.substring(10, 11))) return false;
 
     return true;
@@ -283,48 +315,97 @@ function carregarAlunos() {
         .then(response => response.json())
         .then(data => {
             alunosCache = data;
+            alunosFiltrados = data;
+            paginaAtual = 1;
 
-            const tabela = document.getElementById("tabelaAlunos");
-            tabela.innerHTML = "";
-
-            if (data.length === 0) {
-                tabela.innerHTML = `
-                    <tr>
-                        <td colspan="6" class="text-center text-muted">
-                            Nenhum participante cadastrado.
-                        </td>
-                    </tr>
-                `;
-            } else {
-                data.forEach(item => {
-                    tabela.innerHTML += `
-                        <tr>
-                            <td>${item.nome}</td>
-                            <td>${item.cpf}</td>
-                            <td>${item.telefone}</td>
-                            <td>${item.modalidade_nome || "-"}</td>
-                            <td>
-                                <span class="badge ${item.status === 'ativo' ? 'bg-success' : 'bg-secondary'}">
-                                    ${item.status}
-                                </span>
-                            </td>
-                            <td>
-                                <button class="btn btn-sm btn-warning" onclick="abrirEdicaoAluno(${item.id})">
-                                    Editar
-                                </button>
-
-                                <button class="btn btn-sm btn-danger" onclick="abrirExcluirAluno(${item.id})">
-                                    Excluir
-                                </button>
-                            </td>
-                        </tr>
-                    `;
-                });
-            }
+            renderizarTabelaAlunos();
 
             document.getElementById("loader").style.display = "none";
             document.getElementById("conteudo").style.display = "block";
         });
+}
+
+function renderizarTabelaAlunos() {
+    const tabela = document.getElementById("tabelaAlunos");
+    tabela.innerHTML = "";
+
+    const inicio = (paginaAtual - 1) * itensPorPagina;
+    const fim = inicio + itensPorPagina;
+    const pagina = alunosFiltrados.slice(inicio, fim);
+
+    document.getElementById("totalRegistros").innerText = alunosFiltrados.length;
+
+    if (pagina.length === 0) {
+        tabela.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center text-muted">
+                    Nenhum participante encontrado.
+                </td>
+            </tr>
+        `;
+    } else {
+        pagina.forEach(item => {
+            tabela.innerHTML += `
+                <tr>
+                    <td>${item.nome}</td>
+                    <td>${item.cpf}</td>
+                    <td>${item.telefone}</td>
+                    <td>${item.modalidade_nome || "-"}</td>
+                    <td>
+                        <span class="badge ${item.status === 'ativo' ? 'bg-success' : 'bg-secondary'}">
+                            ${item.status}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-warning" onclick="abrirEdicaoAluno(${item.id})">
+                            Editar
+                        </button>
+
+                        <button class="btn btn-sm btn-danger" onclick="abrirExcluirAluno(${item.id})">
+                            Excluir
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    const totalPaginas = Math.ceil(alunosFiltrados.length / itensPorPagina) || 1;
+
+    document.getElementById("infoPaginacao").innerText =
+        `Página ${paginaAtual} de ${totalPaginas}`;
+}
+
+function filtrarAlunos() {
+    const busca = document.getElementById("buscaAluno").value.toLowerCase();
+
+    alunosFiltrados = alunosCache.filter(item => {
+        return (
+            item.nome.toLowerCase().includes(busca) ||
+            item.cpf.toLowerCase().includes(busca) ||
+            item.telefone.toLowerCase().includes(busca) ||
+            (item.modalidade_nome || "").toLowerCase().includes(busca)
+        );
+    });
+
+    paginaAtual = 1;
+    renderizarTabelaAlunos();
+}
+
+function proximaPagina() {
+    const totalPaginas = Math.ceil(alunosFiltrados.length / itensPorPagina);
+
+    if (paginaAtual < totalPaginas) {
+        paginaAtual++;
+        renderizarTabelaAlunos();
+    }
+}
+
+function paginaAnterior() {
+    if (paginaAtual > 1) {
+        paginaAtual--;
+        renderizarTabelaAlunos();
+    }
 }
 
 function abrirCadastroAluno() {
