@@ -30,27 +30,27 @@
 
         <nav class="sidebar-menu">
 
-            <a href="/" class="menu-link">
+            <a href="/" class="menu-link {% if request.path == '/' %}active{% endif %}">
                 <span>📊</span>
                 Dashboard
             </a>
 
-            <a href="/alunos" class="menu-link">
+            <a href="/alunos" class="menu-link {% if '/alunos' in request.path %}active{% endif %}">
                 <span>👥</span>
                 Participantes
             </a>
 
-            <a href="/modalidades" class="menu-link">
+            <a href="/modalidades" class="menu-link {% if '/modalidades' in request.path %}active{% endif %}">
                 <span>⚽</span>
                 Modalidades
             </a>
 
-            <a href="/usuarios" class="menu-link">
+            <a href="/usuarios" class="menu-link {% if '/usuarios' in request.path %}active{% endif %}">
                 <span>👤</span>
                 Usuários
             </a>
 
-            <a href="/relatorios" class="menu-link">
+            <a href="/relatorios" class="menu-link {% if '/relatorios' in request.path %}active{% endif %}">
                 <span>📄</span>
                 Relatórios
             </a>

@@ -83,9 +83,7 @@ body {
     color: #fff;
 }
 
-.menu-link:first-child {
-    background: rgba(255,255,255,0.18);
-}
+
 
 /* MAIN */
 
@@ -371,4 +369,10 @@ body {
 .warning-icone {
     border: 2px solid #f6c343;
     color: #f6c343;
+}
+
+.menu-link.active {
+    background: rgba(255,255,255,0.18);
+    border-radius: 14px;
+    box-shadow: 0 8px 18px rgba(0,0,0,.15);
 }

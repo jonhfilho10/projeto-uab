@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario_id INTEGER,
+    acao TEXT NOT NULL,
+    modulo TEXT NOT NULL,
+    descricao TEXT NOT NULL,
+    criado_em DATETIME DEFAULT CURRENT_TIMESTAMP
+);

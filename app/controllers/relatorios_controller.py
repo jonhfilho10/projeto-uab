@@ -5,6 +5,7 @@ from io import BytesIO
 from flask import Blueprint, render_template, jsonify, request
 from app.database.database import get_db
 from app.utils.auth import login_required
+from app.utils.respostas import resposta_sucesso, resposta_erro
 
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer

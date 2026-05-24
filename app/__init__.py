@@ -1,19 +1,42 @@
 from flask import Flask, render_template, jsonify
 import time
+import os
+
+from dotenv import load_dotenv
+from flask_wtf.csrf import CSRFProtect
 
 from app.database.database import init_db, close_db, get_db
 from app.controllers.auth_controller import auth_bp
 from app.controllers.modalidades_controller import modalidades_bp
 from app.controllers.alunos_controller import alunos_bp
-from app.utils.auth import login_required
 from app.controllers.usuarios_controller import usuarios_bp
 from app.controllers.relatorios_controller import relatorios_bp
+from app.utils.auth import login_required
 
 
 def create_app():
+
+    load_dotenv()
+
     app = Flask(__name__)
 
-    app.secret_key = "chave_secreta_projeto_social"
+    app.secret_key = os.getenv(
+        "SECRET_KEY",
+        "chave_temporaria_dev"
+    )
+
+    csrf = CSRFProtect()
+    csrf.init_app(app)
+
+    csrf.exempt(auth_bp)
+    csrf.exempt(modalidades_bp)
+    csrf.exempt(alunos_bp)
+    csrf.exempt(usuarios_bp)
+    csrf.exempt(relatorios_bp)
+
+    app.config["SESSION_COOKIE_HTTPONLY"] = True
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    app.config["SESSION_COOKIE_SECURE"] = False
 
     app.teardown_appcontext(close_db)
 
@@ -28,6 +51,7 @@ def create_app():
     @app.route("/api/dashboard")
     @login_required
     def api_dashboard():
+
         time.sleep(1)
 
         db = get_db()
@@ -68,10 +92,12 @@ def create_app():
         lista_ocupacao = []
 
         for item in ocupacao_modalidades:
+
             vagas = item["vagas"] or 0
             total = item["total_participantes"] or 0
 
             percentual = 0
+
             if vagas > 0:
                 percentual = round((total / vagas) * 100, 2)
 
@@ -97,4 +123,5 @@ def create_app():
     app.register_blueprint(alunos_bp)
     app.register_blueprint(usuarios_bp)
     app.register_blueprint(relatorios_bp)
+
     return app

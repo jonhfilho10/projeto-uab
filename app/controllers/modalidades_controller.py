@@ -1,6 +1,9 @@
 from flask import Blueprint, render_template, jsonify, request
 from app.database.database import get_db
 from app.utils.auth import login_required
+from app.utils.logs import registrar_log
+from app.utils.respostas import resposta_sucesso, resposta_erro
+from app.utils.validacoes import limpar_texto, validar_inteiro_positivo
 
 modalidades_bp = Blueprint("modalidades", __name__)
 
@@ -25,7 +28,9 @@ def api_listar_modalidades():
             m.criado_em,
             COUNT(a.id) AS total_participantes
         FROM modalidades m
-        LEFT JOIN alunos a ON a.modalidade_id = m.id and a.status = 'ativo'
+        LEFT JOIN alunos a 
+            ON a.modalidade_id = m.id 
+            AND a.status = 'ativo'
         GROUP BY m.id
         ORDER BY m.nome ASC
     """).fetchall()
@@ -33,7 +38,6 @@ def api_listar_modalidades():
     lista = []
 
     for item in modalidades:
-
         vagas = item["vagas"] or 0
         total = item["total_participantes"] or 0
         disponiveis = vagas - total
@@ -60,89 +64,88 @@ def api_listar_modalidades():
 @modalidades_bp.route("/api/modalidades", methods=["POST"])
 @login_required
 def api_criar_modalidade():
-    dados = request.get_json()
+    dados = request.get_json() or {}
 
-    nome = dados.get("nome", "").strip()
-    descricao = dados.get("descricao", "").strip()
+    nome = limpar_texto(dados.get("nome"))
+    descricao = limpar_texto(dados.get("descricao"))
     vagas = dados.get("vagas", 0)
 
     if not nome:
-        return jsonify({
-            "success": False,
-            "mensagem": "O nome da modalidade é obrigatório."
-        }), 400
+        return resposta_erro(
+            "O nome da modalidade é obrigatório.",
+            400
+        )
 
     if not descricao:
-        return jsonify({
-            "success": False,
-            "mensagem": "A descrição da modalidade é obrigatória."
-        }), 400
+        return resposta_erro(
+            "A descrição da modalidade é obrigatória.",
+            400
+        )
 
-    try:
-        vagas = int(vagas)
+    if not validar_inteiro_positivo(vagas):
+        return resposta_erro(
+            "A quantidade de vagas deve ser maior que zero.",
+            400
+        )
 
-        if vagas <= 0:
-            return jsonify({
-                "success": False,
-                "mensagem": "A quantidade de vagas deve ser maior que zero."
-            }), 400
-
-    except ValueError:
-        return jsonify({
-            "success": False,
-            "mensagem": "A quantidade de vagas deve ser um número."
-        }), 400
+    vagas = int(vagas)
 
     db = get_db()
 
     db.execute("""
-        INSERT INTO modalidades (nome, descricao, vagas)
+        INSERT INTO modalidades (
+            nome,
+            descricao,
+            vagas
+        )
         VALUES (?, ?, ?)
-    """, (nome, descricao, vagas))
+    """, (
+        nome,
+        descricao,
+        vagas
+    ))
 
     db.commit()
 
-    return jsonify({
-        "success": True,
-        "mensagem": "Modalidade cadastrada com sucesso."
-    })
+    registrar_log(
+        "CADASTRO",
+        "MODALIDADE",
+        f"Modalidade {nome} cadastrada no sistema."
+    )
+
+    return resposta_sucesso(
+        "Modalidade cadastrada com sucesso."
+    )
 
 
 @modalidades_bp.route("/api/modalidades/<int:id>", methods=["PUT"])
 @login_required
 def api_editar_modalidade(id):
-    dados = request.get_json()
+    dados = request.get_json() or {}
 
-    nome = dados.get("nome", "").strip()
-    descricao = dados.get("descricao", "").strip()
+    nome = limpar_texto(dados.get("nome"))
+    descricao = limpar_texto(dados.get("descricao"))
     vagas = dados.get("vagas", 0)
 
     if not nome:
-        return jsonify({
-            "success": False,
-            "mensagem": "O nome da modalidade é obrigatório."
-        }), 400
+        return resposta_erro(
+            "O nome da modalidade é obrigatório.",
+            400
+        )
 
     if not descricao:
-        return jsonify({
-            "success": False,
-            "mensagem": "A descrição da modalidade é obrigatória."
-        }), 400
+        return resposta_erro(
+            "A descrição da modalidade é obrigatória.",
+            400
+        )
 
-    try:
-        vagas = int(vagas)
+    if not validar_inteiro_positivo(vagas):
+        return resposta_erro(
+            "A quantidade de vagas deve ser maior que zero.",
+            400
+        )
 
-        if vagas <= 0:
-            return jsonify({
-                "success": False,
-                "mensagem": "A quantidade de vagas deve ser maior que zero."
-            }), 400
-
-    except ValueError:
-        return jsonify({
-            "success": False,
-            "mensagem": "A quantidade de vagas deve ser um número."
-        }), 400
+    vagas = int(vagas)
 
     db = get_db()
 
@@ -152,23 +155,35 @@ def api_editar_modalidade(id):
     ).fetchone()
 
     if modalidade is None:
-        return jsonify({
-            "success": False,
-            "mensagem": "Modalidade não encontrada."
-        }), 404
+        return resposta_erro(
+            "Modalidade não encontrada.",
+            404
+        )
 
     db.execute("""
         UPDATE modalidades
-        SET nome = ?, descricao = ?, vagas = ?
+        SET nome = ?,
+            descricao = ?,
+            vagas = ?
         WHERE id = ?
-    """, (nome, descricao, vagas, id))
+    """, (
+        nome,
+        descricao,
+        vagas,
+        id
+    ))
 
     db.commit()
 
-    return jsonify({
-        "success": True,
-        "mensagem": "Modalidade atualizada com sucesso."
-    })
+    registrar_log(
+        "UPDATE",
+        "MODALIDADE",
+        f"Modalidade {nome} atualizada no sistema."
+    )
+
+    return resposta_sucesso(
+        "Modalidade atualizada com sucesso."
+    )
 
 
 @modalidades_bp.route("/api/modalidades/<int:id>", methods=["DELETE"])
@@ -177,15 +192,15 @@ def api_excluir_modalidade(id):
     db = get_db()
 
     modalidade = db.execute(
-        "SELECT id FROM modalidades WHERE id = ?",
+        "SELECT id, nome FROM modalidades WHERE id = ?",
         (id,)
     ).fetchone()
 
     if modalidade is None:
-        return jsonify({
-            "success": False,
-            "mensagem": "Modalidade não encontrada."
-        }), 404
+        return resposta_erro(
+            "Modalidade não encontrada.",
+            404
+        )
 
     alunos_vinculados = db.execute(
         "SELECT COUNT(*) AS total FROM alunos WHERE modalidade_id = ?",
@@ -193,15 +208,24 @@ def api_excluir_modalidade(id):
     ).fetchone()
 
     if alunos_vinculados["total"] > 0:
-        return jsonify({
-            "success": False,
-            "mensagem": "Não é possível excluir esta modalidade, pois existem participantes vinculados."
-        }), 400
+        return resposta_erro(
+            "Não é possível excluir esta modalidade, pois existem participantes vinculados.",
+            400
+        )
 
-    db.execute("DELETE FROM modalidades WHERE id = ?", (id,))
+    db.execute(
+        "DELETE FROM modalidades WHERE id = ?",
+        (id,)
+    )
+
     db.commit()
 
-    return jsonify({
-        "success": True,
-        "mensagem": "Modalidade excluída com sucesso."
-    })
+    registrar_log(
+        "EXCLUSAO",
+        "MODALIDADE",
+        f"Modalidade {modalidade['nome']} excluída do sistema pelo usuário autenticado."
+    )
+
+    return resposta_sucesso(
+        "Modalidade excluída com sucesso."
+    )

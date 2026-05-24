@@ -1,6 +1,9 @@
 from flask import Blueprint, render_template, jsonify, request
 from app.database.database import get_db
 from app.utils.auth import login_required
+from app.utils.logs import registrar_log
+from app.utils.respostas import resposta_sucesso, resposta_erro
+from app.utils.validacoes import limpar_texto, somente_numeros, validar_cpf
 
 alunos_bp = Blueprint("alunos", __name__)
 
@@ -53,29 +56,35 @@ def api_listar_alunos():
 @alunos_bp.route("/api/alunos", methods=["POST"])
 @login_required
 def api_criar_aluno():
-    dados = request.get_json()
+    dados = request.get_json() or {}
 
-    nome = dados.get("nome", "").strip()
-    cpf = dados.get("cpf", "").strip()
-    telefone = dados.get("telefone", "").strip()
-    endereco = dados.get("endereco", "").strip()
+    nome = limpar_texto(dados.get("nome"))
+    cpf = somente_numeros(dados.get("cpf"))
+    telefone = limpar_texto(dados.get("telefone"))
+    endereco = limpar_texto(dados.get("endereco"))
     modalidade_id = dados.get("modalidade_id")
-    status = dados.get("status", "ativo").strip()
+    status = limpar_texto(dados.get("status", "ativo"))
 
     if not nome:
-        return jsonify({"success": False, "mensagem": "O nome do participante é obrigatório."}), 400
+        return resposta_erro("O nome do participante é obrigatório.", 400)
 
     if not cpf:
-        return jsonify({"success": False, "mensagem": "O CPF do participante é obrigatório."}), 400
+        return resposta_erro("O CPF do participante é obrigatório.", 400)
+
+    if not validar_cpf(cpf):
+        return resposta_erro("CPF inválido.", 400)
 
     if not telefone:
-        return jsonify({"success": False, "mensagem": "O telefone do participante é obrigatório."}), 400
+        return resposta_erro("O telefone do participante é obrigatório.", 400)
 
     if not endereco:
-        return jsonify({"success": False, "mensagem": "O endereço do participante é obrigatório."}), 400
+        return resposta_erro("O endereço do participante é obrigatório.", 400)
 
     if not modalidade_id:
-        return jsonify({"success": False, "mensagem": "A modalidade é obrigatória."}), 400
+        return resposta_erro("A modalidade é obrigatória.", 400)
+
+    if status not in ["ativo", "inativo"]:
+        return resposta_erro("Status inválido.", 400)
 
     db = get_db()
 
@@ -85,10 +94,10 @@ def api_criar_aluno():
     ).fetchone()
 
     if cpf_existente:
-        return jsonify({
-            "success": False,
-            "mensagem": "Já existe um participante cadastrado com este CPF."
-        }), 400
+        return resposta_erro(
+            "Já existe um participante cadastrado com este CPF.",
+            400
+        )
 
     modalidade = db.execute("""
         SELECT 
@@ -103,56 +112,76 @@ def api_criar_aluno():
     """, (modalidade_id,)).fetchone()
 
     if modalidade is None:
-        return jsonify({
-            "success": False,
-            "mensagem": "Modalidade não encontrada."
-        }), 404
+        return resposta_erro("Modalidade não encontrada.", 404)
 
     if modalidade["total_participantes"] >= modalidade["vagas"]:
-        return jsonify({
-            "success": False,
-            "mensagem": f"A modalidade {modalidade['nome']} já atingiu o limite de {modalidade['vagas']} participantes."
-        }), 400
+        return resposta_erro(
+            f"A modalidade {modalidade['nome']} já atingiu o limite de {modalidade['vagas']} participantes.",
+            400
+        )
 
     db.execute("""
-        INSERT INTO alunos (nome, cpf, telefone, endereco, modalidade_id, status)
+        INSERT INTO alunos (
+            nome,
+            cpf,
+            telefone,
+            endereco,
+            modalidade_id,
+            status
+        )
         VALUES (?, ?, ?, ?, ?, ?)
-    """, (nome, cpf, telefone, endereco, modalidade_id, status))
+    """, (
+        nome,
+        cpf,
+        telefone,
+        endereco,
+        modalidade_id,
+        status
+    ))
 
     db.commit()
 
-    return jsonify({
-        "success": True,
-        "mensagem": "Participante cadastrado com sucesso."
-    })
+    registrar_log(
+        "CADASTRO",
+        "PARTICIPANTES",
+        f"Participante {nome} cadastrado no sistema."
+    )
+
+    return resposta_sucesso("Participante cadastrado com sucesso.")
 
 
 @alunos_bp.route("/api/alunos/<int:id>", methods=["PUT"])
 @login_required
 def api_editar_aluno(id):
-    dados = request.get_json()
+    dados = request.get_json() or {}
 
-    nome = dados.get("nome", "").strip()
-    cpf = dados.get("cpf", "").strip()
-    telefone = dados.get("telefone", "").strip()
-    endereco = dados.get("endereco", "").strip()
+    nome = limpar_texto(dados.get("nome"))
+    cpf = somente_numeros(dados.get("cpf"))
+    telefone = limpar_texto(dados.get("telefone"))
+    endereco = limpar_texto(dados.get("endereco"))
     modalidade_id = dados.get("modalidade_id")
-    status = dados.get("status", "ativo").strip()
+    status = limpar_texto(dados.get("status", "ativo"))
 
     if not nome:
-        return jsonify({"success": False, "mensagem": "O nome do participante é obrigatório."}), 400
+        return resposta_erro("O nome do participante é obrigatório.", 400)
 
     if not cpf:
-        return jsonify({"success": False, "mensagem": "O CPF do participante é obrigatório."}), 400
+        return resposta_erro("O CPF do participante é obrigatório.", 400)
+
+    if not validar_cpf(cpf):
+        return resposta_erro("CPF inválido.", 400)
 
     if not telefone:
-        return jsonify({"success": False, "mensagem": "O telefone do participante é obrigatório."}), 400
+        return resposta_erro("O telefone do participante é obrigatório.", 400)
 
     if not endereco:
-        return jsonify({"success": False, "mensagem": "O endereço do participante é obrigatório."}), 400
+        return resposta_erro("O endereço do participante é obrigatório.", 400)
 
     if not modalidade_id:
-        return jsonify({"success": False, "mensagem": "A modalidade é obrigatória."}), 400
+        return resposta_erro("A modalidade é obrigatória.", 400)
+
+    if status not in ["ativo", "inativo"]:
+        return resposta_erro("Status inválido.", 400)
 
     db = get_db()
 
@@ -162,10 +191,7 @@ def api_editar_aluno(id):
     ).fetchone()
 
     if aluno is None:
-        return jsonify({
-            "success": False,
-            "mensagem": "Participante não encontrado."
-        }), 404
+        return resposta_erro("Participante não encontrado.", 404)
 
     cpf_existente = db.execute(
         "SELECT id FROM alunos WHERE cpf = ? AND id <> ?",
@@ -173,10 +199,10 @@ def api_editar_aluno(id):
     ).fetchone()
 
     if cpf_existente:
-        return jsonify({
-            "success": False,
-            "mensagem": "Já existe outro participante cadastrado com este CPF."
-        }), 400
+        return resposta_erro(
+            "Já existe outro participante cadastrado com este CPF.",
+            400
+        )
 
     modalidade = db.execute("""
         SELECT 
@@ -193,29 +219,42 @@ def api_editar_aluno(id):
     """, (id, modalidade_id)).fetchone()
 
     if modalidade is None:
-        return jsonify({
-            "success": False,
-            "mensagem": "Modalidade não encontrada."
-        }), 404
+        return resposta_erro("Modalidade não encontrada.", 404)
 
     if modalidade["total_participantes"] >= modalidade["vagas"]:
-        return jsonify({
-            "success": False,
-            "mensagem": f"A modalidade {modalidade['nome']} já atingiu o limite de {modalidade['vagas']} participantes."
-        }), 400
+        return resposta_erro(
+            f"A modalidade {modalidade['nome']} já atingiu o limite de {modalidade['vagas']} participantes.",
+            400
+        )
 
     db.execute("""
         UPDATE alunos
-        SET nome = ?, cpf = ?, telefone = ?, endereco = ?, modalidade_id = ?, status = ?
+        SET nome = ?,
+            cpf = ?,
+            telefone = ?,
+            endereco = ?,
+            modalidade_id = ?,
+            status = ?
         WHERE id = ?
-    """, (nome, cpf, telefone, endereco, modalidade_id, status, id))
+    """, (
+        nome,
+        cpf,
+        telefone,
+        endereco,
+        modalidade_id,
+        status,
+        id
+    ))
 
     db.commit()
 
-    return jsonify({
-        "success": True,
-        "mensagem": "Participante atualizado com sucesso."
-    })
+    registrar_log(
+        "UPDATE",
+        "PARTICIPANTES",
+        f"Participante {nome} alterado no sistema."
+    )
+
+    return resposta_sucesso("Participante atualizado com sucesso.")
 
 
 @alunos_bp.route("/api/alunos/<int:id>", methods=["DELETE"])
@@ -229,15 +268,15 @@ def api_excluir_aluno(id):
     ).fetchone()
 
     if aluno is None:
-        return jsonify({
-            "success": False,
-            "mensagem": "Participante não encontrado."
-        }), 404
+        return resposta_erro("Participante não encontrado.", 404)
 
     db.execute("DELETE FROM alunos WHERE id = ?", (id,))
     db.commit()
 
-    return jsonify({
-        "success": True,
-        "mensagem": "Participante excluído com sucesso."
-    })
+    registrar_log(
+        "EXCLUSAO",
+        "PARTICIPANTES",
+        f"Participante ID {id} excluído do sistema pelo usuário autenticado."
+    )
+
+    return resposta_sucesso("Participante excluído com sucesso.")
